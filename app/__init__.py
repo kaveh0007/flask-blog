@@ -1,59 +1,32 @@
-from flask import Flask, render_template, url_for, flash, redirect
-from app.forms import RegistrationForm, LoginForm
+from flask import Flask
+from config import Config
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime, timezone
 
 app = Flask(__name__)
+app.config.from_object(Config)
+db = SQLAlchemy(app)
 
-app.config["SECRET_KEY"] = (
-    "cbd535a731c27deae6fc9e9c2fbb12225cb321c530fddcf272c6a606b24dca58"
-)
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(20), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    image_file = db.Column(db.String(20), nullable=False, default='default.jpg')
+    password = db.Column(db.String(60), nullable=False)
 
-Posts = [
-    {
-        "author": "Kaveh",
-        "title": "Blog Post 1",
-        "date_posted": "October 24, 2025",
-        "content": "Hello this is my first blog post",
-    },
-    {
-        "author": "John Doe",
-        "title": "Blog Post 1",
-        "date_posted": "October 24, 2025",
-        "content": "Hello now the AWS server in east US just went down",
-    },
-]
+    posts = db.relationship('Post', backref='author', lazy=True)
 
+    def __repr__(self):
+        return f"User('{self.username}', '{self.email}', '{self.image_file}')"
 
-@app.route("/")
-def home():
-    return render_template("home.html", posts=Posts)
+class Post(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    date_posted = db.Column(db.DateTime, nullable=False,default=datetime.now(timezone.utc))
+    content = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
+    def __repr__(self):
+        return f"Post('{self.title}', '{self.content}', '{self.user_id}')"
 
-@app.route("/about")
-def about():
-    return render_template("about.html", title="About")
-
-
-@app.route("/health")
-def health_check():
-    return "The backend is running"
-
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    form = RegistrationForm()
-    if form.validate_on_submit():
-        flash(f"Account created for {form.username.data}!", "success")
-        return redirect(url_for("home"))
-    return render_template("register.html", form=form, title="Sign Up")
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    form = LoginForm()
-    if form.validate_on_submit(): # if request.method=="POST"
-        if form.email.data == "kaveh@blog.com" and form.password.data == "password":
-            flash("Logged in Successfully!", "success")
-            return redirect(url_for('home'))
-        else:
-            flash("Invalid Credentials!", "danger")
-    return render_template("login.html", form=form, title="Login")
+from app import routes

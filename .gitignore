@@ -7,3 +7,6 @@ __pycache__/
 
 # Private Environment Variables
 .env
+
+# Local database files
+*.db
