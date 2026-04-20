@@ -1,6 +1,7 @@
-from app import app
-from flask import render_template, url_for, flash, redirect, request, jsonify
-from app.forms import RegistrationForm, LoginForm
+from flask import flash, jsonify, redirect, render_template, request, url_for
+from app import app, bcrypt, db
+from app.forms import LoginForm, RegistrationForm
+from app.models import User
 
 Posts = [
     {
@@ -36,6 +37,10 @@ def health_check():
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
+        pw_hash = bcrypt.generate_password_hash(form.password.data).decode(encoding='utf-8')
+        user = User(username=form.username.data, email=form.email.data, password=pw_hash)
+        db.session.add(user)
+        db.session.commit()
         flash(f"Account created for {form.username.data}!", "success")
         return redirect(url_for("home"))
     return render_template("register.html", form=form, title="Sign Up")
@@ -45,11 +50,17 @@ def register():
 def login():
     form = LoginForm()
     if form.validate_on_submit(): # if request.method=="POST" && form.validate()
-        if form.email.data == "kaveh@blog.com" and form.password.data == "password":
-            flash("Logged in Successfully!", "success")
-            return redirect(url_for('home'))
+        user_found = User.query.filter(User.email == form.email.data).first()
+        if(user_found):
+            check_pw = bcrypt.check_password_hash(user_found.password, form.password.data)
+            if(check_pw):
+                flash(f"Logged in Successfully as {user_found.username}!", "success")
+                return redirect(url_for('home'))
+            else:
+                flash("Incorrect Password", "danger")
+                return render_template("login.html", form=form, title="Login")
         else:
-            flash("Invalid Credentials!", "danger")
+            flash("No Such User!", "danger")
     return render_template("login.html", form=form, title="Login")
 
 @app.route("/posts/by/<author>")
