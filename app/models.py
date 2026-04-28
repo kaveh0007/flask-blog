@@ -1,7 +1,12 @@
-from app import db
+from flask_login import UserMixin
+from app import db, login_manager
 from datetime import datetime, timezone
 
-class User(db.Model):
+@login_manager.user_loader
+def load_user(user_id):
+    return User.get(user_id)
+
+class User(db.Model, UserMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
@@ -13,6 +18,13 @@ class User(db.Model):
 
     def __repr__(self):
         return f"User('{self.username}', '{self.email}', '{self.image_file}')"
+
+    @staticmethod
+    def get(user_id):
+        if(user_id):
+            user = db.session.get(User, user_id)
+            return user
+        return None
 
 class Post(db.Model):
 

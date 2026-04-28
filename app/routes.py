@@ -1,7 +1,9 @@
 from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask_login import login_required, login_user, logout_user
 from app import app, bcrypt, db
 from app.forms import LoginForm, RegistrationForm
 from app.models import User
+from app.utils import check_url_scheme_and_authority
 
 Posts = [
     {
@@ -50,18 +52,32 @@ def register():
 def login():
     form = LoginForm()
     if form.validate_on_submit(): # if request.method=="POST" && form.validate()
-        user_found = User.query.filter(User.email == form.email.data).first()
-        if(user_found):
-            check_pw = bcrypt.check_password_hash(user_found.password, form.password.data)
-            if(check_pw):
-                flash(f"Logged in Successfully as {user_found.username}!", "success")
-                return redirect(url_for('home'))
+        user = User.query.filter(User.email == form.email.data).first()
+        if user and bcrypt.check_password_hash(user.password, form.password.data):
+            login_user(user, remember=form.remember.data)
+            flash(f"Logged in Successfully as {user.username}", "success")
+            # In case a login_required functionality was accessed by an unauthenticated user
+            next = request.args.get('next')
+            if check_url_scheme_and_authority(next, request.host):
+                return redirect(next)
             else:
-                flash("Incorrect Password", "danger")
-                return render_template("login.html", form=form, title="Login")
+                flash("Unverified URLs cannot be accessed", "danger")
+                return redirect(url_for("home"))
         else:
-            flash("No Such User!", "danger")
+            flash("Incorrect Username or Password", "danger")
     return render_template("login.html", form=form, title="Login")
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("Logged out successfully", "info")
+    return redirect(url_for("home"))
+
+@app.route("/account")
+@login_required
+def account():
+    return render_template("account.html")
 
 @app.route("/posts/by/<author>")
 def posts_by_author(author):
