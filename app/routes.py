@@ -1,7 +1,7 @@
 from flask import flash, jsonify, redirect, render_template, request, url_for
-from flask_login import login_required, login_user, logout_user
+from flask_login import login_required, login_user, logout_user, current_user
 from app import app, bcrypt, db
-from app.forms import LoginForm, RegistrationForm
+from app.forms import LoginForm, RegistrationForm, AccountForm
 from app.models import User
 from app.utils import check_url_scheme_and_authority
 
@@ -58,11 +58,12 @@ def login():
             flash(f"Logged in Successfully as {user.username}", "success")
             # In case a login_required functionality was accessed by an unauthenticated user
             next = request.args.get('next')
-            if check_url_scheme_and_authority(next, request.host):
-                return redirect(next)
-            else:
-                flash("Unverified URLs cannot be accessed", "danger")
-                return redirect(url_for("home"))
+            if(next):
+                if check_url_scheme_and_authority(next, {request.host}):
+                    return redirect(next)
+                else:
+                    flash("Unverified URLs cannot be accessed", "danger")
+            return redirect(url_for("home"))
         else:
             flash("Incorrect Username or Password", "danger")
     return render_template("login.html", form=form, title="Login")
@@ -74,10 +75,21 @@ def logout():
     flash("Logged out successfully", "info")
     return redirect(url_for("home"))
 
-@app.route("/account")
+@app.route("/account", methods=["GET", "POST"])
 @login_required
 def account():
-    return render_template("account.html")
+    form = AccountForm()
+    if request.method == "GET":
+        form.username.data = current_user.username
+        form.email.data = current_user.email
+
+    if form.validate_on_submit():
+        current_user.username = form.username.data
+        current_user.email = form.email.data
+        db.session.commit()
+        flash("Account updated successfully!", "success")
+
+    return render_template("account.html", image_file=url_for("static", filename=f'/assets/{current_user.image_file}'), form=form, title="Account")
 
 @app.route("/posts/by/<author>")
 def posts_by_author(author):
