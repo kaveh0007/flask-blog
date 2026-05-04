@@ -1,9 +1,9 @@
 from typing import Set
 from urllib.parse import urlparse
-from pathlib import Path
 from secrets import token_hex
 from flask import current_app
 from werkzeug.datastructures import FileStorage
+from PIL import Image
 
 def check_url_scheme_and_authority(url: str, allowed_hosts: Set[str]) -> bool:
     """
@@ -43,10 +43,15 @@ def handle_pfp_uploads(image_file: FileStorage) -> str:
     Allowed Arguments:
     - image_file : A `werkzeug.datastructures.FileStorage` object.
     """
+    expected_size = (125, 125)
     name_on_disk = token_hex(8)
     _, extension = image_file.filename.split(".")
 
     filename = ".".join([name_on_disk, extension])
     location_on_disk = f"{current_app.config['UPLOAD_FOLDER']}/{filename}"
-    image_file.save(location_on_disk)
+
+    resized_image_file = Image.open(image_file.stream)
+    resized_image_file.thumbnail(expected_size)
+
+    resized_image_file.save(location_on_disk)
     return filename
