@@ -3,6 +3,7 @@ from wtforms import StringField, PasswordField, SubmitField, BooleanField, Valid
 from wtforms.validators import InputRequired, Length, Email, EqualTo
 from app.models import User
 from flask_login import current_user
+from flask_wtf.file import FileField, FileAllowed
 
 
 class RegistrationForm(FlaskForm):
@@ -39,6 +40,7 @@ class LoginForm(FlaskForm):
 class AccountForm(FlaskForm):
     username = StringField("Username", validators=[InputRequired(), Length(min=2, max=20)])
     email = StringField("Email", validators=[InputRequired(), Email()])
+    image_file = FileField("Profile Picture", validators=[FileAllowed(['jpg', 'png'])])
 
     submit = SubmitField("Update")
 

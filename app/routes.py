@@ -1,9 +1,10 @@
-from flask import flash, jsonify, redirect, render_template, request, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_login import login_required, login_user, logout_user, current_user
 from app import app, bcrypt, db
 from app.forms import LoginForm, RegistrationForm, AccountForm
 from app.models import User
-from app.utils import check_url_scheme_and_authority
+from app.utils import check_url_scheme_and_authority, handle_pfp_uploads
+from pathlib import Path
 
 Posts = [
     {
@@ -86,10 +87,25 @@ def account():
     if form.validate_on_submit():
         current_user.username = form.username.data
         current_user.email = form.email.data
+        if(form.image_file.data):
+            image_file = handle_pfp_uploads(form.image_file.data)
+            previous_image_file = current_user.image_file
+            Path.unlink(f"{current_app.config['UPLOAD_FOLDER']}/{previous_image_file}")
+            current_user.image_file = image_file
         db.session.commit()
         flash("Account updated successfully!", "success")
 
-    return render_template("account.html", image_file=url_for("static", filename=f'/assets/{current_user.image_file}'), form=form, title="Account")
+    filename = None
+    if current_user.image_file != 'default.jpg':
+        filename = current_user.image_file
+        print(filename)
+        print(Path(filename).name)
+
+    return render_template("account.html", form=form, title="Account", filename=filename)
+
+@app.route("/serve/<filename>")
+def serve_image(filename):
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
 
 @app.route("/posts/by/<author>")
 def posts_by_author(author):

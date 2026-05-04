@@ -1,10 +1,13 @@
 from typing import Set
 from urllib.parse import urlparse
-
+from pathlib import Path
+from secrets import token_hex
+from flask import current_app
+from werkzeug.datastructures import FileStorage
 
 def check_url_scheme_and_authority(url: str, allowed_hosts: Set[str]) -> bool:
     """
-    Used to prevent open redirects in the flask application. \n
+    Used to prevent open redirects in the flask application.\n
     Allowed arguments:
     - url : The URL string you want to check (full url or authority).
     - allowed_hosts : Set of Strings of hosts you want to allow (with scheme and host and optionally with port).
@@ -33,3 +36,17 @@ def check_url_scheme_and_authority(url: str, allowed_hosts: Set[str]) -> bool:
         allowed_netloc.add(netloc_host) if netloc_host else allowed_netloc.add(host)
 
     return netloc_target in allowed_netloc
+
+def handle_pfp_uploads(image_file: FileStorage) -> str:
+    """
+    Used to handle image uploads in requests to change the profile picture of the user account.\n
+    Allowed Arguments:
+    - image_file : A `werkzeug.datastructures.FileStorage` object.
+    """
+    name_on_disk = token_hex(8)
+    _, extension = image_file.filename.split(".")
+
+    filename = ".".join([name_on_disk, extension])
+    location_on_disk = f"{current_app.config['UPLOAD_FOLDER']}/{filename}"
+    image_file.save(location_on_disk)
+    return filename
