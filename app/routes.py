@@ -1,40 +1,23 @@
-from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for, abort
 from flask_login import login_required, login_user, logout_user, current_user
 from app import app, bcrypt, db
-from app.forms import LoginForm, RegistrationForm, AccountForm
-from app.models import User
+from app.forms import LoginForm, RegistrationForm, AccountForm, PostForm
+from app.models import User, Post
 from app.utils import check_url_scheme_and_authority, handle_pfp_uploads
 from pathlib import Path
 
-Posts = [
-    {
-        "author": "Kaveh",
-        "title": "Blog Post 1",
-        "date_posted": "October 24, 2025",
-        "content": "Hello this is my first blog post",
-    },
-    {
-        "author": "John Doe",
-        "title": "Blog Post 1",
-        "date_posted": "October 24, 2025",
-        "content": "Hello now the AWS server in east US just went down",
-    },
-]
-
 @app.route("/")
 def home():
+    Posts = Post.query.all()
     return render_template("home.html", posts=Posts)
-
 
 @app.route("/about")
 def about():
     return render_template("about.html", title="About")
 
-
 @app.route("/health")
 def health_check():
     return "The backend is running"
-
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -47,7 +30,6 @@ def register():
         flash(f"Account created for {form.username.data}!", "success")
         return redirect(url_for("home"))
     return render_template("register.html", form=form, title="Sign Up")
-
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -90,7 +72,8 @@ def account():
         if(form.image_file.data):
             image_file = handle_pfp_uploads(form.image_file.data)
             previous_image_file = current_user.image_file
-            Path.unlink(f"{current_app.config['UPLOAD_FOLDER']}/{previous_image_file}")
+            if previous_image_file != "default.jpg":
+                Path.unlink(f"{current_app.config['UPLOAD_FOLDER']}/{previous_image_file}")
             current_user.image_file = image_file
         db.session.commit()
         flash("Account updated successfully!", "success")
@@ -98,8 +81,6 @@ def account():
     filename = None
     if current_user.image_file != 'default.jpg':
         filename = current_user.image_file
-        print(filename)
-        print(Path(filename).name)
 
     return render_template("account.html", form=form, title="Account", filename=filename)
 
@@ -107,11 +88,53 @@ def account():
 def serve_image(filename):
     return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)
 
+@app.route("/post/new", methods=["GET", "POST"])
+@login_required
+def new_post():
+    form = PostForm()
+    legend = "What's on your mind?"
+    if form.validate_on_submit():
+        post = Post(title=form.title.data, content=form.content.data, author=current_user)
+        db.session.add(post)
+        db.session.commit()
+        flash("You successfully made a post", "success")
+        return redirect(url_for('home'))
+    return render_template("create_post.html", title="Create New Post", form=form, legend=legend)
+
+@app.route("/post/<int:post_id>")
+@login_required
+def view_post(post_id):
+    post=db.session.get(Post, post_id)
+    return render_template("post.html", post=post, title=f"Post {post.id} by {current_user}")
+
+@app.route("/post/<int:post_id>/update", methods=['GET', 'POST'])
+@login_required
+def update_post(post_id):
+    form = PostForm()
+    post = db.session.get(Post, post_id)
+    legend = "Update Post"
+
+    if post.author != current_user:
+        abort(403)
+
+    if form.validate_on_submit():
+        post.title = form.title.data
+        post.content = form.content.data
+        db.session.commit()
+        flash("Post updated successfully", "success")
+        return redirect(url_for("home"))
+    
+    elif request.method == 'GET':
+        form.title.data = post.title
+        form.content.data = post.content
+        
+    return render_template("create_post.html", title=f"Update Post {post_id}", form=form, legend = legend)
+
 @app.route("/posts/by/<author>")
 def posts_by_author(author):
     author_posts=[]
-    for post in Posts:
-        if post["author"] == author:
+    for post in Post.query.all():
+        if post.author.username == author:
             author_posts.append(post)
     if author_posts:
         return render_template("home.html", posts=author_posts, author=author)
