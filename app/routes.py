@@ -130,6 +130,23 @@ def update_post(post_id):
         
     return render_template("create_post.html", title=f"Update Post {post_id}", form=form, legend = legend)
 
+@app.route("/post/delete", methods=['POST'])
+@login_required
+def delete_post():
+    data = request.get_json()
+    post_id = data.get('postId')
+
+    if(post_id):
+        post = db.session.get(Post, post_id)
+        if post.author != current_user:
+            abort(403)
+
+        db.session.delete(post)
+        db.session.commit()
+        flash("Deleted Successfully", "info")
+        
+    return jsonify({"redirect_url" :url_for("home")})
+
 @app.route("/posts/by/<author>")
 def posts_by_author(author):
     author_posts=[]
