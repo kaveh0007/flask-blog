@@ -8,7 +8,12 @@ from pathlib import Path
 
 @app.route("/")
 def home():
-    Posts = Post.query.all()
+    page_number = 1
+    if request.args.get('page_number'):
+        page_number = request.args.get('page_number')
+        print(page_number)
+        print(type(page_number))
+    Posts = db.paginate(Post.query.order_by(Post.date_posted.desc()), page=int(page_number), per_page=5)
     return render_template("home.html", posts=Posts)
 
 @app.route("/about")
@@ -145,7 +150,7 @@ def delete_post():
         db.session.commit()
         flash("Deleted Successfully", "info")
         
-    return jsonify({"redirect_url" :url_for("home")})
+    return jsonify({"redirect_url" : url_for("home")})
 
 @app.route("/posts/by/<author>")
 def posts_by_author(author):
