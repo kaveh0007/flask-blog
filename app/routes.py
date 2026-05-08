@@ -8,12 +8,8 @@ from pathlib import Path
 
 @app.route("/")
 def home():
-    page_number = 1
-    if request.args.get('page_number'):
-        page_number = request.args.get('page_number')
-        print(page_number)
-        print(type(page_number))
-    Posts = db.paginate(Post.query.order_by(Post.date_posted.desc()), page=int(page_number), per_page=5)
+    page_number = request.args.get('page_number', 1 , type=int)
+    Posts = db.paginate(Post.query.order_by(Post.date_posted.desc()), page=page_number, per_page=5)
     return render_template("home.html", posts=Posts)
 
 @app.route("/about")
@@ -152,19 +148,14 @@ def delete_post():
         
     return jsonify({"redirect_url" : url_for("home")})
 
-@app.route("/posts/by/<author>")
-def posts_by_author(author):
-    author_posts=[]
-    for post in Post.query.all():
-        if post.author.username == author:
-            author_posts.append(post)
-    if author_posts:
-        return render_template("home.html", posts=author_posts, author=author)
-    return render_template("author_not_found.html", author=author)
-
-@app.route("/process", methods=["POST"])
-def process():
-    data = request.get_json()
-    author=data['author']
-    redirect_url=url_for('posts_by_author', author=author)
-    return jsonify({"redirect_url": redirect_url})
+@app.route("/posts/by/<username>")
+def user_posts(username):
+    user = User.query.filter(User.username == username).first_or_404()
+    page_number = request.args.get('page_number', 1, type=int)
+    posts = db.paginate(Post.query.\
+        filter(Post.user_id == user.id).\
+        order_by(Post.date_posted.desc()),\
+        page=page_number,
+        per_page=5)
+    
+    return render_template("user_posts.html", title=f"Posts by {username}", posts=posts, user=user)

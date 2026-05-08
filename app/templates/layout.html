@@ -34,13 +34,6 @@
                         <a class="nav-item nav-link" href="/">Home</a>
                         <a class="nav-item nav-link" href="/about">About</a>
                     </div>
-                    <!-- Search Functionality -->
-                    {% if current_user.is_authenticated %}
-                    <form class="navbar-search" onsubmit="handle_search(); return false;" role="search">
-                        <input type="text" placeholder="Search For..." id="search" class="navbar-search-input">
-                        <button type="submit" class="navbar-search-button">Search</button>
-                    </form>
-                    {% endif %}
                     <!-- Navbar Right Side -->
                     <div class="navbar-nav">
                         {% if current_user.is_authenticated %}
