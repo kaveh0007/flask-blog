@@ -1,10 +1,11 @@
 from flask import current_app, flash, jsonify, redirect, render_template, request, send_from_directory, url_for, abort
 from flask_login import login_required, login_user, logout_user, current_user
-from app import app, bcrypt, db
-from app.forms import LoginForm, RegistrationForm, AccountForm, PostForm
+from app import app, bcrypt, db, mail
+from app.forms import LoginForm, RegistrationForm, AccountForm, PostForm, ResetRequest, ResetPassword
 from app.models import User, Post
 from app.utils import check_url_scheme_and_authority, handle_pfp_uploads
 from pathlib import Path
+from flask_mail import Message
 
 @app.route("/")
 def home():
@@ -159,3 +160,39 @@ def user_posts(username):
         per_page=5)
     
     return render_template("user_posts.html", title=f"Posts by {username}", posts=posts, user=user)
+
+@app.route("/login/forgot_password", methods=["GET", "POST"])
+def request_password_change():
+    form = ResetRequest()
+    if form.validate_on_submit():
+        token = current_app.config['SECRET_KEY']
+        user = User.query.filter(User.email == form.email.data).first()
+        flash("An email has been sent to this email with further instructions", "info")
+        msg = Message(subject="Request to reset your password",
+                    body =  f"""
+Hello,
+We have received a request to change your password.
+Please follow this URL to change your password {url_for('create_new_password', token=token, user_id = user.id, _external = True)}
+                            """ ,
+                            sender = "vermakishlaya@gmail.com",
+                            recipients = [user.email]
+                    )
+        mail.send(msg)
+    return render_template("reset_request.html", title="Forgot Password", form=form)
+
+@app.route("/create_new_password/<token>", methods=["GET", "POST"])
+def create_new_password(token):
+    if token != current_app.config['SECRET_KEY']:
+        flash("Request invalid or timed out", "warning")
+        return redirect(url_for("request_password_change"))
+    form = ResetPassword()
+    if form.validate_on_submit():
+        user_id = request.args.get('user_id')
+        user = db.session.get(User, user_id)
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode(encoding="utf-8")
+        user.password = hashed_password
+        db.session.commit()
+        flash("Password changed successfully, please login to your account", "success")
+        return redirect(url_for("login"))
+    return render_template("reset_password.html", title="Create New Password", form=form)
+    

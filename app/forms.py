@@ -60,3 +60,17 @@ class PostForm(FlaskForm):
     title = StringField("Title", validators=[InputRequired()])
     content = TextAreaField("Content", validators=[InputRequired()])
     create = SubmitField("Create")
+
+class ResetRequest(FlaskForm):
+    email = StringField("Email", validators=[InputRequired(), Email()])
+    confirm = SubmitField("Request Password Change")
+
+    def validate_email(self, email):
+        user = User.query.filter(User.email == email.data).first()
+        if(not user):
+            raise ValidationError("This email has not yet been registered")
+        
+class ResetPassword(FlaskForm):
+    password = PasswordField("New Password", validators=[InputRequired(), Length(min=2, max=10)])
+    confirm_password = PasswordField("Confirm New Passwoed", validators=[InputRequired(), EqualTo("password", message="Passwords do not match!")])
+    reset_password = SubmitField("Reset")
