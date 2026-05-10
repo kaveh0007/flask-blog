@@ -3,7 +3,7 @@ from flask_login import login_required, login_user, logout_user, current_user
 from app import app, bcrypt, db, mail
 from app.forms import LoginForm, RegistrationForm, AccountForm, PostForm, ResetRequest, ResetPassword
 from app.models import User, Post
-from app.utils import check_url_scheme_and_authority, handle_pfp_uploads
+from app.utils import check_url_scheme_and_authority, handle_pfp_uploads, create_jwt, verify_jwt
 from pathlib import Path
 from flask_mail import Message
 
@@ -165,14 +165,15 @@ def user_posts(username):
 def request_password_change():
     form = ResetRequest()
     if form.validate_on_submit():
-        token = current_app.config['SECRET_KEY']
         user = User.query.filter(User.email == form.email.data).first()
+        # token = current_app.config['SECRET_KEY']
+        token = create_jwt(user.id)
         flash("An email has been sent to this email with further instructions", "info")
         msg = Message(subject="Request to reset your password",
                     body =  f"""
 Hello,
 We have received a request to change your password.
-Please follow this URL to change your password {url_for('create_new_password', token=token, user_id = user.id, _external = True)}
+Please follow this URL to change your password {url_for('create_new_password', token=token, _external = True)}
                             """ ,
                             sender = "vermakishlaya@gmail.com",
                             recipients = [user.email]
