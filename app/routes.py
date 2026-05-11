@@ -163,19 +163,22 @@ def user_posts(username):
 
 @app.route("/login/forgot_password", methods=["GET", "POST"])
 def request_password_change():
+    if current_user.is_authenticated:
+        flash("Already Logged In", "info")
+        return redirect(url_for("home"))
     form = ResetRequest()
     if form.validate_on_submit():
         user = User.query.filter(User.email == form.email.data).first()
-        # token = current_app.config['SECRET_KEY']
         token = create_jwt(user.id)
+        reset_url = url_for("create_new_password", token=token, _external=True)
         flash("An email has been sent to this email with further instructions", "info")
         msg = Message(subject="Request to reset your password",
-                    body =  f"""
-Hello,
-We have received a request to change your password.
-Please follow this URL to change your password {url_for('create_new_password', token=token, _external = True)}
+                      html = render_template("password_reset_email.html", username = user.username, reset_url=reset_url),
+                      body = f"""
+                            Hello,
+                            We have received a request to change your password.
+                            Please follow this URL to change your password: {reset_url}
                             """ ,
-                            sender = "vermakishlaya@gmail.com",
                             recipients = [user.email]
                     )
         mail.send(msg)
@@ -183,13 +186,15 @@ Please follow this URL to change your password {url_for('create_new_password', t
 
 @app.route("/create_new_password/<token>", methods=["GET", "POST"])
 def create_new_password(token):
-    if token != current_app.config['SECRET_KEY']:
-        flash("Request invalid or timed out", "warning")
+    if current_user.is_authenticated:
+        flash("Already Logged In", "info")
+        return redirect(url_for("home"))
+    data = verify_jwt(token)
+    if not data:
         return redirect(url_for("request_password_change"))
     form = ResetPassword()
     if form.validate_on_submit():
-        user_id = request.args.get('user_id')
-        user = db.session.get(User, user_id)
+        user = db.session.get(User, data)
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode(encoding="utf-8")
         user.password = hashed_password
         db.session.commit()

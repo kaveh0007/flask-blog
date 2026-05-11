@@ -85,3 +85,5 @@ def verify_jwt(token) -> int|None:
     except jwt.InvalidSignatureError:
         flash("Authentication Failed", "danger")
         return None
+    except jwt.DecodeError:
+        flash("Invalid Token Format", "danger")
