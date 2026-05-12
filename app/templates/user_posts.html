@@ -5,7 +5,7 @@
 <article class="media content-section">
     <div class="media-body">
         <div class="article-metadata">
-            <img class="rounded-circle post-img" src={{ url_for("serve_image", 
+            <img class="rounded-circle post-img" src={{ url_for("main.serve_image", 
             filename=post.author.image_file) if post.author.image_file !="default.jpg" 
             else url_for("static", filename="assets/default.jpg" ) }}>
             <span class="mr-2">{{ post.author.username }}</span>
@@ -19,9 +19,9 @@
 {% for page_number in posts.iter_pages(left_edge=1, left_current=1, right_edge=1, right_current=1) %}
 {% if page_number %}
     {% if page_number == posts.page %}
-    <a class="btn btn-info mb-4" href="{{ url_for('user_posts', username=user.username, page_number=page_number) }}">{{ page_number }}</a>
+    <a class="btn btn-info mb-4" href="{{ url_for('post.user_posts', username=user.username, page_number=page_number) }}">{{ page_number }}</a>
     {% else %}
-    <a class="btn btn-outline-info mb-4" href="{{ url_for('user_posts', username=user.username, page_number=page_number) }}">{{ page_number }}</a>
+    <a class="btn btn-outline-info mb-4" href="{{ url_for('post.user_posts', username=user.username, page_number=page_number) }}">{{ page_number }}</a>
     {% endif %}
 {% else %}
 <span>...</span>

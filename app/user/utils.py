@@ -1,11 +1,11 @@
-from typing import Set
-from urllib.parse import urlparse
-from secrets import token_hex
 from flask import current_app, flash
+from typing import Set
 from werkzeug.datastructures import FileStorage
+from urllib.parse import urlparse
 from PIL import Image
-import jwt
+from secrets import token_hex
 from datetime import datetime, timezone, timedelta
+import jwt
 
 def check_url_scheme_and_authority(url: str, allowed_hosts: Set[str]) -> bool:
     """
