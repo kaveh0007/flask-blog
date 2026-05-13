@@ -26,9 +26,11 @@ def create_app(config_class=Config):
     from app.main import main
     from app.user import user
     from app.post import post
+    from app.error import error
 
     app.register_blueprint(main)
     app.register_blueprint(user)
     app.register_blueprint(post)
+    app.register_blueprint(error)
 
     return app
